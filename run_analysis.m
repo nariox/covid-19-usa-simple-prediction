@@ -8,7 +8,7 @@ state='Michigan';
 
 %% Gather data
 % Download files    
-outfilename = websave('us-states.csv','https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv');
+websave('us-states.csv','https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv');
 % Setup the Import Options and import the data
 opts = delimitedTextImportOptions("NumVariables", 5);
 % Specify range and delimiter
@@ -24,7 +24,7 @@ opts.EmptyLineRule = "read";
 opts = setvaropts(opts, "state", "EmptyFieldRule", "auto");
 opts = setvaropts(opts, "date1", "InputFormat", "yyyy-MM-dd");
 % Import the data
-tbl = readtable("/home/pnariyoshi/Downloads/us-states.csv", opts);
+tbl = readtable("us-states.csv", opts);
 % Convert to output type
 date1 = tbl.date1;
 states = tbl.state;
