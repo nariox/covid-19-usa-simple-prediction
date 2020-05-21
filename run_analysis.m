@@ -49,9 +49,10 @@ dc=diff([0; c]);
 % How many days to count;
 % Ignore the first nd0 days;
 % nd0=1; % First data point
-nd0=find(d=='2020-04-08',1); % 
+% nd0=find(d=='2020-04-08',1); % 
 % nd0=find(d=='2020-03-24',1); % For Michigan, gives the day the stay-at-home order started
 % ndlast=find(d=='2020-04-12',1); % For Michigan, gives 2 days after the protests started
+nd0=find(d=='2020-04-12',1); % For Michigan, gives 2 days after the protests started
 % nd0=find(d=='2020-04-26',1); % For Michigan, start about 2 weeks after protests started
 ndlast=numel(d); % Uses the last available day
 
@@ -78,25 +79,27 @@ offset = interp1(n0,c,mean(n))-A*normcdf(mean(n),mu,sigma);
 
 figure(1)
 subplot(2,4,1)
-plot(n,log(y),'x-',n,log(F0(n)),'x-')
+plot(n,log(y),'x-',n,log(F0(n)),'x-',nn,log(F0(nn)))
+legend('Cases','Fit','Prediction','Location','best');
 title('Log cases per day')
 subplot(2,4,5)
-plot(n0,log(dc),'x-',n,log(F0(n)),'x-')
-title('Log cases per day')
+plot(n0,log(dc),'x-',n,log(F0(n)),'-x',nn,log(F0(nn)))
+title('Log cases per day (all data)')
+legend('Cases','Fit','Prediction','Location','best');
 
 subplot(2,4,2)
 plot(n,y,'x-',n,F0(n),'x-',nn,F0(nn))
 title('Cases per day')
 legend('Cases','Fit','Prediction','Location','best');
 subplot(2,4,6)
-plot(n0,dc,'x-',n,F0(n),'x-',nn,F0(nn))
-title('Log cases per day')
+plot(n0,dc,'x-',n,F0(n),'-x',nn,F0(nn))
+title('Cases per day (all data)')
 legend('Cases','Fit','Prediction','Location','best');
 
 subplot(1,2,2)
 plot(n0,c,nnn,offset+A*normcdf(nnn,mu,sigma),nnn,offset+max(A*normcdf(nnn,mu,sigma))*ones(size(nnn))*0.9,nnn,offset+max(A*normcdf(nnn,mu,sigma))*ones(size(nnn))*0.95,nnn,offset+max(A*normcdf(nnn,mu,sigma))*ones(size(nnn))*0.99);
-xlim([-numel(c) 14])
-title('Cumulative cases by day')
+xlim([-numel(c) 30])
+title(['Cumulative cases by since ' string(d(ndlast))])
 legend('Cases','Prediction','90% line','95% line','99% line','Location','best');
 grid on; grid minor
 
