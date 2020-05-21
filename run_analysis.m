@@ -37,57 +37,77 @@ clear opts tbl
 %% Process data
 % Get fips number
 nstate=fips(find(states==state,1));
-% Get total cases
-c=cases(fips==nstate); %c=c(1:end-1);
-% Conver to daily cases
+% Get total cases and dates
+d=date1(fips==nstate);
+c=cases(fips==nstate);
+c=smooth(c,7);
+% Convert to daily cases
 dc=diff([0; c]);
 % Smooth out a bit
-dc=smooth(dc,3);
-% Apply log
-lc=log(dc);
+% dc=smooth(dc,7);
 
 % How many days to count;
 % Ignore the first nd0 days;
-nd0=15; % For Michigan 15 gives the day the stay-at-home order started
-y=lc(nd0+1:end);
-n=-numel(y):-1;
+% nd0=1; % First data point
+nd0=find(d=='2020-04-08',1); % 
+% nd0=find(d=='2020-03-24',1); % For Michigan, gives the day the stay-at-home order started
+% ndlast=find(d=='2020-04-12',1); % For Michigan, gives 2 days after the protests started
+% nd0=find(d=='2020-04-26',1); % For Michigan, start about 2 weeks after protests started
+ndlast=numel(d); % Uses the last available day
 
-% Create quadratic regression coefficients
-x=[ones(numel(y),1) n' n'.^2];
+ncurrent=numel(d);
+y=dc(nd0:ndlast);
+n=(nd0-ncurrent:ndlast-ncurrent)';
 
+% Create model
+ft=fittype(@(A,mu,sigma,x) A*normpdf(x,mu,sigma), 'independent', 'x', 'dependent', 'y','coefficients',{'A','mu','sigma'});
 % Estimate parameters
-a=x\y;
+F0=fit(n,y,ft,'Startpoint',[max(y),-10,20],'Robust', 'on','Upper',[100*max(y),40,100],'Lower',[1,-100,0.1]);
+A=F0.A; mu=F0.mu; sigma=F0.sigma;
 
-% Predict next 9 days
-nn=(-1:0.01:9)';
-xx=[ones(size(nn)) nn nn.^2];
-figure(1)
-title('Log cases per day')
-plot(n,y,n,x*a,xx(:,2),xx*a)
-
-figure(2)
-plot(n,exp(y),n,exp(x*a),xx(:,2),exp(xx*a))
-title('Cases per day')
-legend('Cases','Fit','Prediction','Location','best');
-n0=-numel(c):-1;
+% Predict next 30 days
+nn=(ndlast-ncurrent:0.01:30)';
+% Predict -180 days ago to 180 days later
+n0=-numel(c)+1:0;
 dnn=0.01;
 nnn=(-180:dnn:180)';
-xxx=[ones(size(nnn)) nnn nnn.^2];
 
-figure(3)
-plot(n0,c,nnn,cumsum(exp(xxx*a))*dnn,nnn,0.9*sum(exp(xxx*a))*dnn*ones(size(nnn)),nnn,0.95*sum(exp(xxx*a))*dnn*ones(size(nnn)),nnn,0.99*sum(exp(xxx*a))*dnn*ones(size(nnn)));
+% Create an offset for the CDF (there are probably better ways to do this
+offset = interp1(n0,c,mean(n))-A*normcdf(mean(n),mu,sigma);
+
+
+figure(1)
+subplot(2,4,1)
+plot(n,log(y),'x-',n,log(F0(n)),'x-')
+title('Log cases per day')
+subplot(2,4,5)
+plot(n0,log(dc),'x-',n,log(F0(n)),'x-')
+title('Log cases per day')
+
+subplot(2,4,2)
+plot(n,y,'x-',n,F0(n),'x-',nn,F0(nn))
+title('Cases per day')
+legend('Cases','Fit','Prediction','Location','best');
+subplot(2,4,6)
+plot(n0,dc,'x-',n,F0(n),'x-',nn,F0(nn))
+title('Log cases per day')
+legend('Cases','Fit','Prediction','Location','best');
+
+subplot(1,2,2)
+plot(n0,c,nnn,offset+A*normcdf(nnn,mu,sigma),nnn,offset+max(A*normcdf(nnn,mu,sigma))*ones(size(nnn))*0.9,nnn,offset+max(A*normcdf(nnn,mu,sigma))*ones(size(nnn))*0.95,nnn,offset+max(A*normcdf(nnn,mu,sigma))*ones(size(nnn))*0.99);
 xlim([-numel(c) 14])
+title('Cumulative cases by day')
 legend('Cases','Prediction','90% line','95% line','99% line','Location','best');
 grid on; grid minor
 
 % Today
-today=sum(exp(xxx(nnn<0,:)*a)*dnn)
+today=offset+A*normcdf(0,mu,sigma)
 
 % How many next day
-tomorrow=sum(exp(xxx(nnn<1,:)*a)*dnn)
+tomorrow=offset+A*normcdf(1,mu,sigma)
 
-% How many next day
-inaweek=sum(exp(xxx(nnn<7,:)*a)*dnn)
+% How many next week
+inaweek=offset+A*normcdf(7,mu,sigma)
 
 % Final estimate
-final=sum(exp(xxx*a)*dnn)
+final=offset+A
